@@ -195,12 +195,14 @@ function sendUpdatedIceCandidates(peerId) {
 
 function onTextUpdate(newText) {
   console.log("Updated text - ", newText);
+  document.querySelector(".textArea").value = newText;
 }
 
 document.querySelector(".clickBtn").addEventListener("click", () => {
+  const text = document.querySelector(".textArea").value;
   Object.values(AllPeerConnections).forEach(({ dataChannel }) => {
     if (dataChannel.readyState === "open") {
-      dataChannel.send("HelloWorld");
+      dataChannel.send(text);
     }
   });
 });
