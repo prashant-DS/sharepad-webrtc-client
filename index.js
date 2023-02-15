@@ -131,6 +131,12 @@ function createNewPeerConnection(peerId, isInitiatingPeer = true) {
       { urls: "stun:stun4.l.google.com:19302" },
     ],
   });
+
+  AllPeerConnections[peerId] = {
+    peerConnection,
+    canSendIceCandidates: false,
+    iceCandidates: [],
+  };
   // handling data channel
   if (isInitiatingPeer) {
     const dataChannel = peerConnection.createDataChannel(
@@ -140,6 +146,7 @@ function createNewPeerConnection(peerId, isInitiatingPeer = true) {
     dataChannel.onopen = () => console.log(`DataChannel_${peerId} opened`);
     dataChannel.onclose = () => console.log(`DataChannel_${peerId} closed`);
     dataChannel.onmessage = (event) => onTextUpdate(event.data);
+    AllPeerConnections[peerId].dataChannel = dataChannel;
   } else {
     peerConnection.ondatachannel = (event) => {
       const dataChannel = event.channel;
@@ -147,14 +154,10 @@ function createNewPeerConnection(peerId, isInitiatingPeer = true) {
       dataChannel.onopen = () => console.log(`DataChannel_${peerId} opened`);
       dataChannel.onclose = () => console.log(`DataChannel_${peerId} closed`);
       dataChannel.onmessage = (event) => onTextUpdate(event.data);
+      AllPeerConnections[peerId].dataChannel = dataChannel;
     };
   }
 
-  AllPeerConnections[peerId] = {
-    peerConnection,
-    canSendIceCandidates: false,
-    iceCandidates: [],
-  };
   peerConnection.addEventListener("icecandidate", (event) => {
     if (event.candidate) {
       console.log(" newly found ice-candidate for ", peerId);
@@ -193,3 +196,11 @@ function sendUpdatedIceCandidates(peerId) {
 function onTextUpdate(newText) {
   console.log("Updated text - ", newText);
 }
+
+document.querySelector(".clickBtn").addEventListener("click", () => {
+  Object.values(AllPeerConnections).forEach(({ dataChannel }) => {
+    if (dataChannel.readyState === "open") {
+      dataChannel.send("HelloWorld");
+    }
+  });
+});
