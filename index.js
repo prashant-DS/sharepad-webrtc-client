@@ -18,7 +18,7 @@ const SOCKET_SEND_EVENTS = {
 
 function checkPage() {
   if (window.location.pathname === "/") {
-    alert("Append your identifier in URL");
+    window.location.href = Date.now();
     return false;
   } else if (window.location.pathname.substring(1).indexOf("/") !== -1) {
     alert("Append correct identifier in URL");
