@@ -56,8 +56,7 @@ function startConnection() {
       payload.existingClients.join()
     );
     payload.existingClients.forEach(async (clientId) => {
-      let peerConnection = createNewPeerConnection();
-      AllPeerConnections[clientId] = peerConnection;
+      let peerConnection = createNewPeerConnection(clientId);
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
       socket.emit(SOCKET_SEND_EVENTS.WEBRTC_OFFER, {
@@ -72,8 +71,7 @@ function startConnection() {
     SOCKET_RECEIVE_EVENTS.REQUEST_ANSWER,
     async ({ initiatingClient, offer }) => {
       console.log("Received request to create answer for ", initiatingClient);
-      let peerConnection = createNewPeerConnection();
-      AllPeerConnections[initiatingClient] = peerConnection;
+      let peerConnection = createNewPeerConnection(initiatingClient);
       peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
@@ -89,7 +87,7 @@ function startConnection() {
     SOCKET_RECEIVE_EVENTS.ANSWER_OF_OFFER,
     ({ remoteClient, answer }) => {
       console.log("Received answer from ", remoteClient);
-      AllPeerConnections[remoteClient].setRemoteDescription(
+      AllPeerConnections[remoteClient].peerConnection.setRemoteDescription(
         new RTCSessionDescription(answer)
       );
     }
@@ -100,7 +98,7 @@ if (checkPage()) {
   startConnection();
 }
 
-function createNewPeerConnection() {
+function createNewPeerConnection(peerId) {
   let peerConnection = new RTCPeerConnection({
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
@@ -110,5 +108,6 @@ function createNewPeerConnection() {
       { urls: "stun:stun4.l.google.com:19302" },
     ],
   });
+  AllPeerConnections[peerId] = { peerConnection };
   return peerConnection;
 }
