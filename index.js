@@ -56,15 +56,7 @@ function startConnection() {
       payload.existingClients.join()
     );
     payload.existingClients.forEach(async (clientId) => {
-      let peerConnection = new RTCPeerConnection({
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-          { urls: "stun:stun2.l.google.com:19302" },
-          { urls: "stun:stun3.l.google.com:19302" },
-          { urls: "stun:stun4.l.google.com:19302" },
-        ],
-      });
+      let peerConnection = createNewPeerConnection();
       AllPeerConnections[clientId] = peerConnection;
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
@@ -80,15 +72,7 @@ function startConnection() {
     SOCKET_RECEIVE_EVENTS.REQUEST_ANSWER,
     async ({ initiatingClient, offer }) => {
       console.log("Received request to create answer for ", initiatingClient);
-      let peerConnection = new RTCPeerConnection({
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-          { urls: "stun:stun2.l.google.com:19302" },
-          { urls: "stun:stun3.l.google.com:19302" },
-          { urls: "stun:stun4.l.google.com:19302" },
-        ],
-      });
+      let peerConnection = createNewPeerConnection();
       AllPeerConnections[initiatingClient] = peerConnection;
       peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
       const answer = await peerConnection.createAnswer();
@@ -114,4 +98,17 @@ function startConnection() {
 
 if (checkPage()) {
   startConnection();
+}
+
+function createNewPeerConnection() {
+  let peerConnection = new RTCPeerConnection({
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:stun3.l.google.com:19302" },
+      { urls: "stun:stun4.l.google.com:19302" },
+    ],
+  });
+  return peerConnection;
 }
