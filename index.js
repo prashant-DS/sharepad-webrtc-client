@@ -1,4 +1,5 @@
 const AllPeerConnections = {};
+let mySocket;
 
 const SOCKET_RECEIVE_EVENTS = {
   INVALID_TOKEN: "INVALID_TOKEN",
@@ -6,11 +7,13 @@ const SOCKET_RECEIVE_EVENTS = {
   REQUEST_OFFER: "REQUEST_OFFER",
   REQUEST_ANSWER: "REQUEST_ANSWER",
   ANSWER_OF_OFFER: "ANSWER_OF_OFFER",
+  NEW_ICE_CANDIDATES: "NEW_ICE_CANDIDATES",
 };
 
 const SOCKET_SEND_EVENTS = {
   WEBRTC_OFFER: "WEBRTC_OFFER",
   WEBRTC_ANSWER: "WEBRTC_ANSWER",
+  NEW_ICE_CANDIDATES: "NEW_ICE_CANDIDATES",
 };
 
 function checkPage() {
@@ -44,6 +47,7 @@ function startConnection() {
 
   socket.on("connect", () => {
     console.log("My Socket id in signalling server ", socket.id);
+    mySocket = socket;
   });
 
   socket.on(SOCKET_RECEIVE_EVENTS.EMPTY_ROOM, () => {
@@ -92,6 +96,25 @@ function startConnection() {
       );
     }
   );
+
+  socket.on(
+    SOCKET_RECEIVE_EVENTS.NEW_ICE_CANDIDATES,
+    async ({ peerId, iceCandidates }) => {
+      console.log("Received new ice candidates from ", peerId);
+      try {
+        await AllPeerConnections[peerId].peerConnection.addIceCandidate(
+          iceCandidates
+        );
+      } catch (e) {
+        console.error(
+          "Error adding received ice candidate for ",
+          peerId,
+          " - ",
+          e
+        );
+      }
+    }
+  );
 }
 
 if (checkPage()) {
@@ -108,6 +131,43 @@ function createNewPeerConnection(peerId) {
       { urls: "stun:stun4.l.google.com:19302" },
     ],
   });
-  AllPeerConnections[peerId] = { peerConnection };
+  AllPeerConnections[peerId] = {
+    peerConnection,
+    canSendIceCandidates: false,
+    iceCandidates: [],
+  };
+  peerConnection.addEventListener("icecandidate", (event) => {
+    if (event.candidate) {
+      console.log(" newly found ice-candidate for ", peerId);
+      if (!AllPeerConnections[peerId].canSendIceCandidates) {
+        AllPeerConnections[peerId].iceCandidates.push(event.candidate);
+      } else {
+        sendUpdatedIceCandidates(peerId);
+      }
+    }
+  });
+
+  peerConnection.addEventListener("signalingstatechange", (event) => {
+    if (peerConnection.signalingState === "stable") {
+      AllPeerConnections[peerId].canSendIceCandidates = true;
+      sendUpdatedIceCandidates(peerId);
+    }
+  });
+
+  peerConnection.addEventListener("connectionstatechange", (event) => {
+    if (peerConnection.connectionState === "connected") {
+      console.log("! Connected with ", peerId);
+    }
+  });
   return peerConnection;
+}
+
+function sendUpdatedIceCandidates(peerId) {
+  if (AllPeerConnections[peerId].iceCandidates.length === 0) return;
+  console.log("Sending new ice candidates to ", peerId);
+  mySocket.emit(SOCKET_SEND_EVENTS.NEW_ICE_CANDIDATES, {
+    peerId,
+    iceCandidates: AllPeerConnections[peerId].iceCandidates,
+  });
+  AllPeerConnections[peerId].iceCandidates = [];
 }
