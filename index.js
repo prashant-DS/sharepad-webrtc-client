@@ -1,8 +1,6 @@
 const AllPeerConnections = {};
 let mySocket;
 
-console.log("PK  -  ", process.env.SIGNALLING_SERVER_URL);
-
 const SOCKET_RECEIVE_EVENTS = {
   INVALID_TOKEN: "INVALID_TOKEN",
   EMPTY_ROOM: "EMPTY_ROOM",
