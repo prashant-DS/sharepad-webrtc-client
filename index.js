@@ -102,8 +102,8 @@ function startConnection() {
     async ({ peerId, iceCandidates }) => {
       console.log("Received new ice candidates from ", peerId);
       try {
-        await AllPeerConnections[peerId].peerConnection.addIceCandidate(
-          iceCandidates
+        iceCandidates.forEach((ice) =>
+          AllPeerConnections[peerId].peerConnection.addIceCandidate(ice)
         );
       } catch (e) {
         console.error(
