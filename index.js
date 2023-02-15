@@ -75,7 +75,7 @@ function startConnection() {
     SOCKET_RECEIVE_EVENTS.REQUEST_ANSWER,
     async ({ initiatingClient, offer }) => {
       console.log("Received request to create answer for ", initiatingClient);
-      let peerConnection = createNewPeerConnection(initiatingClient);
+      let peerConnection = createNewPeerConnection(initiatingClient, false);
       peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
@@ -121,7 +121,7 @@ if (checkPage()) {
   startConnection();
 }
 
-function createNewPeerConnection(peerId) {
+function createNewPeerConnection(peerId, isInitiatingPeer = true) {
   let peerConnection = new RTCPeerConnection({
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
@@ -131,6 +131,25 @@ function createNewPeerConnection(peerId) {
       { urls: "stun:stun4.l.google.com:19302" },
     ],
   });
+  // handling data channel
+  if (isInitiatingPeer) {
+    const dataChannel = peerConnection.createDataChannel(
+      `DataChannel_${peerId}`
+    );
+    console.log("Creating DataChannel ", dataChannel.label);
+    dataChannel.onopen = () => console.log(`DataChannel_${peerId} opened`);
+    dataChannel.onclose = () => console.log(`DataChannel_${peerId} closed`);
+    dataChannel.onmessage = (event) => onTextUpdate(event.data);
+  } else {
+    peerConnection.ondatachannel = (event) => {
+      const dataChannel = event.channel;
+      console.log("Created DataChannel by remote end ", dataChannel.label);
+      dataChannel.onopen = () => console.log(`DataChannel_${peerId} opened`);
+      dataChannel.onclose = () => console.log(`DataChannel_${peerId} closed`);
+      dataChannel.onmessage = (event) => onTextUpdate(event.data);
+    };
+  }
+
   AllPeerConnections[peerId] = {
     peerConnection,
     canSendIceCandidates: false,
@@ -139,9 +158,8 @@ function createNewPeerConnection(peerId) {
   peerConnection.addEventListener("icecandidate", (event) => {
     if (event.candidate) {
       console.log(" newly found ice-candidate for ", peerId);
-      if (!AllPeerConnections[peerId].canSendIceCandidates) {
-        AllPeerConnections[peerId].iceCandidates.push(event.candidate);
-      } else {
+      AllPeerConnections[peerId].iceCandidates.push(event.candidate);
+      if (AllPeerConnections[peerId].canSendIceCandidates) {
         sendUpdatedIceCandidates(peerId);
       }
     }
@@ -170,4 +188,8 @@ function sendUpdatedIceCandidates(peerId) {
     iceCandidates: AllPeerConnections[peerId].iceCandidates,
   });
   AllPeerConnections[peerId].iceCandidates = [];
+}
+
+function onTextUpdate(newText) {
+  console.log("Updated text - ", newText);
 }
