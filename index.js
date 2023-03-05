@@ -38,7 +38,7 @@ function startConnection() {
   }
 
   // socket io
-  const socket = io("localhost:8080", {
+  const socket = io("https://signalling-server.onrender.com", {
     transports: ["websocket"],
     auth: {
       token: window.location.pathname.substring(1),
